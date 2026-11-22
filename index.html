@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Місто мрії</title>
+  <style>
+    :root{--ink:#17324d;--paper:#fffdf4;--yellow:#ffd166;--green:#2db88b;--blue:#4f87ce}
+    *{box-sizing:border-box} html,body{width:100%;height:100%;margin:0;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:#9ed6ca}
+    #game{position:relative;width:100%;height:100%;isolation:isolate}
+    canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+    .topbar{position:absolute;z-index:5;left:18px;right:18px;top:14px;height:68px;border-radius:22px;background:rgba(255,253,244,.94);box-shadow:0 8px 22px rgba(31,78,90,.16);display:flex;align-items:center;padding:10px 14px;gap:10px}
+    .brand{display:flex;align-items:center;gap:9px;margin-right:auto;padding-left:3px}.brand-mark{width:44px;height:44px;border-radius:13px;background:var(--yellow);display:grid;place-items:center;font-size:25px}.brand b{font-size:18px}.brand small{display:block;color:#71838e;font-size:11px;margin-top:1px}
+    .stat{min-width:94px;height:48px;border-radius:15px;background:#edf6f2;display:flex;align-items:center;gap:8px;padding:8px 10px}.stat .icon{font-size:22px}.stat small{display:block;color:#71838e;font-size:10px}.stat strong{font-size:16px}.goal{border-left:5px solid var(--yellow)}
+    .bottom{position:absolute;z-index:6;left:50%;bottom:16px;transform:translateX(-50%);width:min(650px,calc(100% - 24px));height:104px;border-radius:24px;background:rgba(255,253,244,.96);box-shadow:0 10px 30px rgba(31,78,90,.18);display:flex;align-items:center;justify-content:center;gap:8px;padding:9px}
+    .card{position:relative;width:112px;height:86px;border:0;border-radius:17px;background:#f2f7f3;color:var(--ink);cursor:pointer;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:.15s;box-shadow:inset 0 -3px rgba(23,50,77,.06)}.card:hover{transform:translateY(-3px)}.card.active{background:#d9f2e8;outline:3px solid #2db88b}.card.disabled{opacity:.48;filter:saturate(.4)}.card .pic{font-size:35px;height:42px;line-height:42px}.card .name{font-size:12px}.cost{position:absolute;right:7px;top:7px;border-radius:9px;background:white;padding:3px 6px;font-size:11px;color:#d08c25}
+    #toast{position:absolute;z-index:8;top:94px;left:50%;transform:translate(-50%,-12px);background:var(--ink);color:white;border-radius:14px;padding:10px 16px;font-weight:700;opacity:0;pointer-events:none;transition:.25s}.toast.show{opacity:1;transform:translate(-50%,0)}
+    #won{position:absolute;z-index:10;inset:0;background:rgba(15,55,62,.55);display:none;align-items:center;justify-content:center;backdrop-filter:blur(5px)}#won.show{display:flex}.modal{width:min(410px,calc(100% - 30px));border-radius:28px;background:var(--paper);padding:30px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.25)}.modal .big{font-size:62px}.modal h1{margin:8px 0}.modal p{color:#71838e}.modal button{border:0;border-radius:14px;background:var(--green);color:white;font-size:16px;font-weight:800;padding:14px 24px;cursor:pointer}
+    @media(max-width:700px){.topbar{left:8px;right:8px;top:7px;height:58px;padding:7px 8px}.brand-mark{width:38px;height:38px}.brand b{font-size:14px}.brand small{display:none}.stat{min-width:66px;height:44px;padding:6px}.stat .icon{font-size:18px}.stat strong{font-size:13px}.goal{min-width:72px}.bottom{bottom:8px;height:92px;padding:6px;gap:4px}.card{width:23%;height:78px}.card .pic{font-size:29px;height:36px}.card .name{font-size:10px}.cost{font-size:9px}.topbar{gap:4px}}
+  </style>
+</head>
+<body>
+<div id="game">
+  <canvas id="canvas"></canvas>
+  <div class="topbar">
+    <div class="brand"><div class="brand-mark">🏙️</div><div><b>Місто мрії</b><small>Будуй і розвивайся</small></div></div>
+    <div class="stat"><div class="icon">🪙</div><div><small>Бюджет</small><strong id="money">1000</strong></div></div>
+    <div class="stat"><div class="icon">👥</div><div><small>Жителі</small><strong id="pop">0</strong></div></div>
+    <div class="stat goal"><div class="icon">🎯</div><div><small>Ціль</small><strong id="goal">12 жит.</strong></div></div>
+  </div>
+  <div id="toast">Потрібно більше монет</div>
+  <div class="bottom" id="palette">
+    <button class="card active" data-type="house"><span class="cost">100</span><span class="pic">🏠</span><span class="name">Будинок</span></button>
+    <button class="card" data-type="shop"><span class="cost">180</span><span class="pic">🏪</span><span class="name">Магазин</span></button>
+    <button class="card" data-type="park"><span class="cost">80</span><span class="pic">🌳</span><span class="name">Парк</span></button>
+    <button class="card" data-type="tower"><span class="cost">260</span><span class="pic">🏢</span><span class="name">Житло</span></button>
+  </div>
+  <div id="won"><div class="modal"><div class="big">🏆</div><h1>Місто готове!</h1><p>Ви зібрали населення і створили затишне місто.</p><button id="again">Грати ще раз</button></div></div>
+</div>
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let W,H,selected='house',money=1000,pop=0,won=false,hover=null;
+const buildings=[];
+const costs={house:100,shop:180,park:80,tower:260};
+const popMap={house:3,shop:0,park:1,tower:6};
+function resize(){const dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)} addEventListener('resize',resize);resize();
+function iso(x,y){return {x:W/2+(x-y)*34,y:130+(x+y)*17}}
+function gridPos(px,py){let rx=(px-W/2)/34,ry=(py-130)/17;return {x:Math.round((rx+ry)/2),y:Math.round((ry-rx)/2)}}
+function diamond(cx,cy,w,h,fill){ctx.beginPath();ctx.moveTo(cx,cy-h/2);ctx.lineTo(cx+w/2,cy);ctx.lineTo(cx,cy+h/2);ctx.lineTo(cx-w/2,cy);ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle='rgba(44,104,88,.12)';ctx.lineWidth=1;ctx.stroke()}
+function draw(){ctx.clearRect(0,0,W,H);let sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#abdeda');sky.addColorStop(.42,'#bfe1bd');sky.addColorStop(1,'#78c68b');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+  // distant hills
+  ctx.fillStyle='#89b59a';ctx.beginPath();ctx.moveTo(0,H*.38);ctx.quadraticCurveTo(W*.18,H*.22,W*.36,H*.38);ctx.quadraticCurveTo(W*.55,H*.24,W*.72,H*.38);ctx.quadraticCurveTo(W*.86,H*.27,W,H*.38);ctx.lineTo(W,H*.55);ctx.lineTo(0,H*.55);ctx.fill();
+  ctx.fillStyle='#74ab91';ctx.beginPath();ctx.moveTo(0,H*.43);ctx.quadraticCurveTo(W*.2,H*.31,W*.42,H*.44);ctx.quadraticCurveTo(W*.65,H*.28,W,H*.43);ctx.lineTo(W,H*.55);ctx.lineTo(0,H*.55);ctx.fill();
+  // tile map
+  for(let x=-6;x<13;x++)for(let y=-6;y<13;y++){let p=iso(x,y);if(p.x>-100&&p.x<W+100&&p.y>70&&p.y<H-100)diamond(p.x,p.y,68,34,(x+y)%2?'#9ed27c':'#a8d886')}
+  // river
+  ctx.save();ctx.globalAlpha=.72;ctx.fillStyle='#63b6b8';ctx.beginPath();ctx.moveTo(W*.82,-20);ctx.bezierCurveTo(W*.72,H*.25,W*.9,H*.42,W*.78,H*.62);ctx.bezierCurveTo(W*.68,H*.78,W*.72,H*.92,W*.62,H);ctx.lineTo(W*.72,H);ctx.bezierCurveTo(W*.82,H*.86,W*.78,H*.72,W*.88,H*.57);ctx.bezierCurveTo(W,H*.38,W*.82,H*.22,W*.93,-20);ctx.fill();ctx.restore();
+  const all=[];for(let x=-5;x<12;x++)for(let y=-5;y<12;y++){const b=buildings.find(v=>v.x===x&&v.y===y);if(b)all.push({x,y,b})}all.sort((a,b)=>a.x+a.y-b.x-b.y);
+  all.forEach(o=>drawBuilding(o.b));
+  if(hover&&hover.inMap){let p=iso(hover.x,hover.y);diamond(p.x,p.y,68,34,selected==='park'?'rgba(255,209,102,.55)':'rgba(255,255,255,.45)')}
+}
+function drawBuilding(b){let p=iso(b.x,b.y),cx=p.x,cy=p.y+4;
+ if(b.type==='house'){ctx.fillStyle='#d9a96b';ctx.fillRect(cx-18,cy-30,36,30);ctx.fillStyle='#fff1d5';ctx.fillRect(cx-15,cy-27,30,27);ctx.fillStyle='#b94f46';ctx.beginPath();ctx.moveTo(cx-21,cy-30);ctx.lineTo(cx,cy-43);ctx.lineTo(cx+21,cy-30);ctx.closePath();ctx.fill();ctx.fillStyle='#75b3b8';ctx.fillRect(cx-7,cy-19,14,10);ctx.fillStyle='#8d5c43';ctx.fillRect(cx-5,cy-8,10,8)}
+ if(b.type==='shop'){ctx.fillStyle='#f3d8a0';ctx.fillRect(cx-20,cy-31,40,31);ctx.fillStyle='#fff4cf';ctx.fillRect(cx-17,cy-28,34,28);ctx.fillStyle='#4a91bc';ctx.fillRect(cx-13,cy-20,26,11);ctx.fillStyle='#ee7656';for(let i=-16;i<16;i+=8){ctx.fillRect(cx+i,cy-31,8,6)}ctx.fillStyle='#7d5c49';ctx.fillRect(cx-5,cy-8,10,8)}
+ if(b.type==='park'){ctx.fillStyle='#684b35';ctx.fillRect(cx-3,cy-13,6,13);ctx.fillStyle='#48a85c';ctx.beginPath();ctx.arc(cx,cy-24,15,0,Math.PI*2);ctx.fill();ctx.fillStyle='#67c76a';ctx.beginPath();ctx.arc(cx-7,cy-28,8,0,Math.PI*2);ctx.fill()}
+ if(b.type==='tower'){ctx.fillStyle='#9fb3bf';ctx.fillRect(cx-15,cy-52,30,52);ctx.fillStyle='#bed0d5';ctx.fillRect(cx-12,cy-49,24,49);ctx.fillStyle='#4d7185';for(let r=0;r<5;r++)for(let c=-1;c<2;c++)ctx.fillRect(cx+c*8-3,cy-45+r*8,5,4);ctx.fillStyle='#78909c';ctx.beginPath();ctx.moveTo(cx-18,cy-52);ctx.lineTo(cx,cy-62);ctx.lineTo(cx+18,cy-52);ctx.closePath();ctx.fill()}
+}
+function update(){document.getElementById('money').textContent=money;document.getElementById('pop').textContent=pop;document.querySelectorAll('.card').forEach(c=>c.classList.toggle('disabled',money<costs[c.dataset.type]))}
+function toast(text){let t=document.getElementById('toast');t.textContent=text;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),1400)}
+canvas.addEventListener('pointermove',e=>{let r=canvas.getBoundingRect?.()||canvas.getBoundingClientRect(),g=gridPos(e.clientX-r.left,e.clientY-r.top);hover={x:g.x,y:g.y,inMap:g.x>-5&&g.x<10&&g.y>-5&&g.y<10}});
+canvas.addEventListener('pointerleave',()=>hover=null);
+canvas.addEventListener('pointerdown',e=>{e.preventDefault();let r=canvas.getBoundingClientRect(),g=gridPos(e.clientX-r.left,e.clientY-r.top);if(g.x<-5||g.x>=10||g.y<-5||g.y>=10||e.clientY<120||e.clientY>H-110)return;let exists=buildings.find(v=>v.x===g.x&&v.y===g.y);if(exists){toast('Ця клітинка зайнята');return}let cost=costs[selected];if(money<cost){toast('Потрібно більше монет');return}money-=cost;pop+=popMap[selected];buildings.push({x:g.x,y:g.y,type:selected});update();if(pop>=12&&!won){won=true;setTimeout(()=>document.getElementById('won').classList.add('show'),350)}});
+document.querySelectorAll('.card').forEach(c=>c.onclick=()=>{selected=c.dataset.type;document.querySelectorAll('.card').forEach(v=>v.classList.remove('active'));c.classList.add('active')});
+document.getElementById('again').onclick=()=>{money=1000;pop=0;won=false;buildings.length=0;document.getElementById('won').classList.remove('show');update()};
+setInterval(()=>{if(pop>0){money+=pop*2;update()}},2500);
+function loop(){draw();requestAnimationFrame(loop)}loop();update();
+</script>
+</body>
+</html>
