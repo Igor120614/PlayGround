@@ -19,7 +19,7 @@
     .resource { min-width:120px; height:52px; display:flex; align-items:center; gap:9px; padding:7px 12px; background:rgba(246,237,218,.96); border:1px solid #9d8060; box-shadow:0 4px 12px rgba(61,42,25,.15); }
     .resource .icon { width:34px; height:34px; display:grid; place-items:center; border-radius:50%; background:#dec796; font-family:Arial,sans-serif; font-weight:bold; }
     .resource b { display:block; font-size:18px; } .resource small { color:#806d54; font-size:11px; }
-    .panel { position:absolute; z-index:5; left:18px; bottom:18px; width:244px; background:rgba(246,237,218,.96); border:2px solid #967653; box-shadow:0 8px 24px rgba(61,42,25,.22); }
+    .panel { position:absolute; z-index:5; left:18px; bottom:18px; width:280px; max-height:410px; overflow-y:auto; background:rgba(246,237,218,.96); border:2px solid #967653; box-shadow:0 8px 24px rgba(61,42,25,.22); }
     .panel h2 { margin:0; padding:10px 14px; font-size:14px; background:#d7c49a; border-bottom:1px solid #967653; letter-spacing:.8px; }
     .buildings { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px; }
     .building { position:relative; height:86px; border:1px solid #b49a72; background:#ede1c5; cursor:pointer; text-align:center; padding:7px 4px 4px; transition:.15s; }
@@ -46,10 +46,14 @@
   <aside class="panel">
     <h2>БУДУВАННЯ</h2>
     <div class="buildings">
-      <button class="building" data-type="house"><div class="pic">⌂</div><strong>Будинок</strong><small>80 монет</small></button>
+      <button class="building" data-type="house"><div class="pic">⌂</div><strong>Міський будинок</strong><small>80 монет</small></button>
+      <button class="building" data-type="tower"><div class="pic">▥</div><strong>Башта</strong><small>180 монет</small></button>
+      <button class="building" data-type="villa"><div class="pic">♜</div><strong>Вілла</strong><small>220 монет</small></button>
       <button class="building" data-type="market"><div class="pic">▦</div><strong>Ринок</strong><small>120 монет</small></button>
       <button class="building" data-type="well"><div class="pic">◉</div><strong>Колодязь</strong><small>60 монет</small></button>
       <button class="building" data-type="garden"><div class="pic">♧</div><strong>Сад</strong><small>50 монет</small></button>
+      <button class="building" data-type="mosque"><div class="pic">☪</div><strong>Мечеть</strong><small>260 монет</small></button>
+      <button class="building" data-type="workshop"><div class="pic">⚒</div><strong>Майстерня</strong><small>150 монет</small></button>
     </div>
   </aside>
   <aside class="status">
@@ -65,9 +69,10 @@ let W,H,DPR;
 function resize(){ DPR=Math.min(devicePixelRatio||1,2); W=innerWidth;H=innerHeight;canvas.width=W*DPR;canvas.height=H*DPR;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0); }
 addEventListener('resize',resize);resize();
 let coins=1240,people=42,happiness=45,selected=null;
+let zoom=1, cameraX=0, cameraY=0, dragging=false, dragStart=[0,0], camStart=[0,0];
 const buildings=[];
-const costs={house:80,market:120,well:60,garden:50};
-function iso(x,y,z=0){ const cx=W/2, cy=H*.08; return [cx+(x-y)*58,cy+(x+y)*29-z]; }
+const costs={house:80,tower:180,villa:220,market:120,well:60,garden:50,mosque:260,workshop:150};
+function iso(x,y,z=0){ const cx=W/2+cameraX, cy=H*.12+cameraY; return [cx+(x-y)*58*zoom,cy+(x+y)*29*zoom-z*zoom]; }
 function poly(points,fill,stroke){ ctx.beginPath(); points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();} }
 function tile(x,y,fill){const c=iso(x,y); const p=[[c[0],c[1]],iso(x+1,y),iso(x+1,y+1),iso(x,y+1)];poly(p,fill,'rgba(92,74,48,.14)');}
 function drawHouse(x,y,large=false){let c=iso(x+.5,y+.5,5), s=large?1.25:1;ctx.save();ctx.translate(c[0],c[1]);ctx.scale(s,s);
@@ -79,20 +84,41 @@ function drawMarket(x,y){let c=iso(x+.5,y+.5,5);ctx.save();ctx.translate(c[0],c[
  poly([[-34,12],[0,25],[34,12],[34,-16],[0,-29],[-34,-16]],'#b78d57');poly([[-34,-16],[0,-29],[34,-16],[34,-29],[0,-43],[-34,-29]],'#d7bd7d');
  poly([[-38,-28],[0,-45],[38,-27],[0,-9]],'#9c513f','#704536');ctx.fillStyle='#f0dfb3';for(let i=-28;i<=20;i+=16){ctx.fillRect(i,-25,11,16)}ctx.restore();}
 function drawWell(x,y){let c=iso(x+.5,y+.5,4);ctx.save();ctx.translate(c[0],c[1]);ctx.fillStyle='#7d8b72';ctx.beginPath();ctx.ellipse(0,0,25,13,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#a6b0a1';ctx.beginPath();ctx.ellipse(0,-3,15,7,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#765a3b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-18,-3);ctx.lineTo(-18,-32);ctx.moveTo(18,-3);ctx.lineTo(18,-32);ctx.moveTo(-22,-32);ctx.lineTo(22,-32);ctx.stroke();ctx.restore();}
-function drawGarden(x,y){let c=iso(x+.5,y+.5,2);ctx.save();ctx.translate(c[0],c[1]);ctx.fillStyle='#8e7a4f';ctx.fillRect(-28,-4,56,16);for(let i=-20;i<=20;i+=13){ctx.fillStyle=i%26? '#6e7d52':'#7f925c';ctx.beginPath();ctx.arc(i,-2+(i%10),6,0,7);ctx.fill();}ctx.restore();}
+function drawGarden(x,y){let c=iso(x+.5,y+.5,2);ctx.save();ctx.translate(c[0],c[1]);ctx.scale(zoom,zoom);ctx.fillStyle='#8e7a4f';ctx.fillRect(-28,-4,56,16);for(let i=-20;i<=20;i+=13){ctx.fillStyle=i%26? '#6e7d52':'#7f925c';ctx.beginPath();ctx.arc(i,-2+(i%10),6,0,7);ctx.fill();}ctx.restore();}
+function drawTower(x,y){let c=iso(x+.5,y+.5,4);ctx.save();ctx.translate(c[0],c[1]);ctx.scale(zoom,zoom);
+ poly([[-24,15],[0,26],[24,14],[24,-38],[0,-50],[-24,-38]],'#c69a66','#72533a');poly([[-24,-38],[0,-50],[24,-38],[24,-46],[0,-58],[-24,-46]],'#e1c58d','#72533a');
+ for(let i=-14;i<=14;i+=14){poly([[i,-15],[i+8,-12],[i+8,-28],[i,-31]],'#674936','#50392d');}poly([[-18,-48],[18,-48],[18,-58],[-18,-58]],'#a87949','#72533a');ctx.restore();}
+function drawVilla(x,y){let c=iso(x+.5,y+.5,5);ctx.save();ctx.translate(c[0],c[1]);ctx.scale(zoom*1.12,zoom*1.12);
+ poly([[-42,17],[0,34],[42,17],[42,-34],[0,-51],[-42,-34]],'#b78a56','#755439');poly([[-42,-34],[0,-51],[42,-34],[42,-48],[0,-66],[-42,-48]],'#dfc18a','#755439');
+ poly([[-42,-34],[0,-51],[0,-66],[-42,-48]],'#9d743f','#755439');poly([[42,-34],[0,-51],[0,-66],[42,-48]],'#c5a268','#755439');
+ poly([[-44,-48],[0,-68],[44,-48],[0,-26]],'#cbb27c','#755439');ctx.fillStyle='#5f4a38';ctx.fillRect(-30,-24,10,25);ctx.fillRect(20,-24,10,25);ctx.restore();}
+function drawMosque(x,y){let c=iso(x+.5,y+.5,5);ctx.save();ctx.translate(c[0],c[1]);ctx.scale(zoom*1.05,zoom*1.05);
+ poly([[-38,16],[0,31],[38,15],[38,-25],[0,-40],[-38,-24]],'#d2bd8f','#806849');poly([[-38,-24],[0,-40],[38,-25],[38,-38],[0,-54],[-38,-38]],'#eee1b5','#806849');
+ ctx.fillStyle='#f2dcaa';ctx.beginPath();ctx.ellipse(0,-54,32,15,0,Math.PI,0);ctx.fill();ctx.fillStyle='#7a6344';ctx.fillRect(-7,-70,14,20);
+ ctx.strokeStyle='#f2e2ba';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-25,-20);ctx.lineTo(-25,-75);ctx.moveTo(25,-20);ctx.lineTo(25,-75);ctx.stroke();ctx.restore();}
+function drawWorkshop(x,y){let c=iso(x+.5,y+.5,5);ctx.save();ctx.translate(c[0],c[1]);ctx.scale(zoom,zoom);
+ poly([[-36,17],[0,30],[36,15],[36,-24],[0,-38],[-36,-23]],'#9d7049','#604731');poly([[-36,-23],[0,-38],[36,-24],[36,-35],[0,-50],[-36,-35]],'#c49c64','#604731');
+ poly([[-38,-34],[0,-52],[38,-33],[0,-14]],'#704a35','#50372a');ctx.fillStyle='#cfaa6d';ctx.fillRect(-22,-18,44,7);ctx.restore();}
 function draw(){ctx.clearRect(0,0,W,H);let sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#aeb9b0');sky.addColorStop(.55,'#d7cfaa');sky.addColorStop(1,'#b3a269');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
   ctx.fillStyle='#8e9a84';ctx.beginPath();ctx.moveTo(0,H*.56);ctx.lineTo(W*.16,H*.42);ctx.lineTo(W*.32,H*.49);ctx.lineTo(W*.52,H*.35);ctx.lineTo(W*.7,H*.48);ctx.lineTo(W*.86,H*.38);ctx.lineTo(W,H*.47);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
   ctx.fillStyle='#7d896e';ctx.beginPath();ctx.moveTo(0,H*.62);ctx.lineTo(W*.23,H*.48);ctx.lineTo(W*.43,H*.58);ctx.lineTo(W*.66,H*.44);ctx.lineTo(W,H*.53);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
-  for(let y=0;y<10;y++)for(let x=0;x<13;x++){let shade=(x+y)%2?'#bcae78':'#c8ba86';tile(x-6,y-2,shade)}
-  buildings.sort((a,b)=>a.x+a.y-(b.x+b.y)).forEach(b=>{if(b.type==='house')drawHouse(b.x,b.y);if(b.type==='market')drawMarket(b.x,b.y);if(b.type==='well')drawWell(b.x,b.y);if(b.type==='garden')drawGarden(b.x,b.y);});
+  for(let y=-9;y<14;y++)for(let x=-12;x<15;x++){let n=(x*17+y*31)%7;let shade=n<0?'#bba96f':((x+y)%2?'#c8ba86':'#bfae77');tile(x,y,shade)}
+  ctx.globalAlpha=.35;ctx.strokeStyle='#eee6bb';ctx.lineWidth=5*zoom;
+  for(let n=-8;n<9;n+=4){let a=iso(n,-9),b=iso(n,13);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();}
+  ctx.globalAlpha=1;
+  buildings.sort((a,b)=>a.x+a.y-(b.x+b.y)).forEach(b=>{if(b.type==='house')drawHouse(b.x,b.y);if(b.type==='tower')drawTower(b.x,b.y);if(b.type==='villa')drawVilla(b.x,b.y);if(b.type==='market')drawMarket(b.x,b.y);if(b.type==='well')drawWell(b.x,b.y);if(b.type==='garden')drawGarden(b.x,b.y);if(b.type==='mosque')drawMosque(b.x,b.y);if(b.type==='workshop')drawWorkshop(b.x,b.y);});
   requestAnimationFrame(draw);
 }
-function invIso(px,py){let cx=W/2,cy=H*.08;let dx=(px-cx),dy=(py-cy);let x=(dx/58+dy/29)/2,y=(dy/29-dx/58)/2;return [Math.floor(x),Math.floor(y)];}
+function invIso(px,py){let cx=W/2+cameraX,cy=H*.12+cameraY;let dx=(px-cx),dy=(py-cy);let x=(dx/(58*zoom)+dy/(29*zoom))/2,y=(dy/(29*zoom)-dx/(58*zoom))/2;return [Math.floor(x),Math.floor(y)];}
+canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.7,Math.min(1.55,zoom*(e.deltaY<0?1.08:.92)));},{passive:false});
+canvas.addEventListener('pointerdown',e=>{dragging=true;dragStart=[e.clientX,e.clientY];camStart=[cameraX,cameraY];canvas.setPointerCapture(e.pointerId);});
+canvas.addEventListener('pointermove',e=>{if(dragging){cameraX=camStart[0]+e.clientX-dragStart[0];cameraY=camStart[1]+e.clientY-dragStart[1];}});
+canvas.addEventListener('pointerup',()=>{dragging=false;});
 function updateUI(){document.getElementById('coins').textContent=coins.toLocaleString('uk-UA');document.getElementById('people').textContent=people;document.getElementById('happiness').style.width=happiness+'%';document.getElementById('happyText').textContent=happiness+'%';}
 document.querySelectorAll('.building').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.building').forEach(b=>b.classList.remove('selected'));if(selected===btn.dataset.type){selected=null}else{selected=btn.dataset.type;btn.classList.add('selected');document.getElementById('tip').classList.add('show');setTimeout(()=>document.getElementById('tip').classList.remove('show'),1800)}});
-canvas.addEventListener('click',e=>{if(!selected)return;let [x,y]=invIso(e.clientX,e.clientY);if(x<-6||x>6||y<-2||y>7)return;if(buildings.some(b=>b.x===x&&b.y===y))return;let cost=costs[selected];if(coins<cost){document.getElementBy('tip').textContent='Недостатньо монет';return;}coins-=cost;buildings.push({x,y,type:selected});if(selected==='house'){people+=4;happiness=Math.min(100,happiness+3)}if(selected==='market'||selected==='garden')happiness=Math.min(100,happiness+5);if(selected==='well')happiness=Math.min(100,happiness+4);updateUI();});
+canvas.addEventListener('click',e=>{if(!selected||dragging)return;let [x,y]=invIso(e.clientX,e.clientY);if(x<-12||x>14||y<-9||y>13)return;if(buildings.some(b=>b.x===x&&b.y===y))return;let cost=costs[selected];if(coins<cost){document.getElementById('tip').textContent='Недостатньо монет';document.getElementById('tip').classList.add('show');setTimeout(()=>document.getElementById('tip').classList.remove('show'),1800);return;}coins-=cost;buildings.push({x,y,type:selected});if(['house','tower','villa','mosque'].includes(selected)){people+=selected==='villa'?8:selected==='house'?4:3;}happiness=Math.min(100,happiness+(['garden','mosque'].includes(selected)?6:selected==='market'?5:3));updateUI();});
 // Starter village
-[[ -3,-1,'house'],[-1,-1,'house'],[1,-1,'house'],[-2,1,'market'],[1,1,'well'],[3,0,'garden'],[3,3,'house']].forEach(b=>buildings.push({x:b[0],y:b[1],type:b[2]}));
+[[ -3,-1,'house'],[-1,-1,'villa'],[1,-1,'tower'],[-2,1,'market'],[1,1,'well'],[3,0,'garden'],[3,3,'house'],[-5,3,'workshop'],[-4,-4,'mosque']].forEach(b=>buildings.push({x:b[0],y:b[1],type:b[2]}));
 updateUI();draw();
 </script>
 </body>
